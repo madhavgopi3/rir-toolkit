@@ -20,7 +20,7 @@ class MeasurementConfig:
     sweep_pre_silence: float = 0.5
     sweep_post_silence: float = 2.0
 
-    use_external_sweep: bool = False
+    use_external_sweep: bool = False #Make sure to input the sweep settings above when using external sweep
 
     # RIR trimming
     rir_trim_pre_ms: float = 0.0
@@ -43,7 +43,14 @@ class MeasurementConfig:
     # Band analysis
     n_fft: int = 262144
     band_fraction: int = 3   # 1 = octave, 3 = third-octave, 6 = sixth-octave
-    band_centres: tuple[int, ...] = (125, 250, 500, 1000, 2000, 4000)
+    # band_centres: tuple[int, ...] = (125, 250, 500, 1000, 2000, 4000)
+    band_centres: tuple[int, ...] = (
+    25, 31, 40, 50, 63, 80,
+    100, 125, 160, 200, 250, 315,
+    400, 500, 630, 800, 1000, 1250,
+    1600, 2000, 2500, 3150, 4000, 5000,
+    6300, 8000, 10000, 12500, 16000
+    )
     band_filter_order: int = 4  # Filter order for banded RT / EDT calculation
 
     # Paths

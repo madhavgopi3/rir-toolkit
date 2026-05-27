@@ -55,9 +55,10 @@ def plot_spectrogram(signal: np.ndarray, fs: int, title: str):
 
 def plot_edc(edc: np.ndarray, fs: int, title: str = "Energy Decay Curve"):
     t = np.arange(len(edc))/fs
-    
+    edc_db = 10 * np.log10(edc + 1e-12)
+
     fig, ax = plt.subplots(figsize=(10, 4))
-    ax.plot(t, edc, linewidth = 0.8)
+    ax.plot(t, edc_db, linewidth = 0.8)
     ax.set_xlabel("Time [s]")
     ax.set_ylabel("Level [dB]")
     ax.set_title(title)
@@ -330,15 +331,6 @@ def plot_heatmap(values_2d, title, cbar_label, output_path=None):
     x_points = np.arange(1, values_2d.shape[1] + 1)
     y_points = np.arange(1, values_2d.shape[0] + 1)
     Xp, Yp = np.meshgrid(x_points, y_points)
-
-    ax.scatter(
-        Xp.ravel(),
-        Yp.ravel(),
-        marker="",
-        facecolors="none",
-        edgecolors="black",
-        linewidths=0.8
-    )
 
     fig.tight_layout()
 
