@@ -40,7 +40,7 @@ def resample_audio(x: np.ndarray, fs: int, target_fs: int) -> np.ndarray:
         channels.append(resample_poly(x[:, ch], up, down)) # resampling one channel at a time. Output would be channels = [resampled_ch0, resampled_ch1], which is a list
     return np.stack(channels, axis = 1).astype(np.float64) # Converts the list into a matrix. 
 
-def normalize_for_saving(x: np.ndarray, peak: float = 0.999) -> np.ndarray:
+def normalise_for_saving(x: np.ndarray, peak: float = 0.999) -> np.ndarray:
     max_val = np.max(np.abs(x))
 
     if max_val < 1e-12: # If signal is practically 0, we have to avoid dividing by 0. Just return the original signal.

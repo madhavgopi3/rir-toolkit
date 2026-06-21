@@ -2,7 +2,7 @@ import numpy as np
 from scipy.signal import hilbert
 
 
-def normalize_rir(h: np.ndarray, peak: float = 0.999) -> np.ndarray:
+def normalise_rir(h: np.ndarray, peak: float = 0.999) -> np.ndarray:
     h = np.asarray(h, dtype=np.float64).squeeze()
 
     max_val = np.max(np.abs(h))
@@ -12,18 +12,6 @@ def normalize_rir(h: np.ndarray, peak: float = 0.999) -> np.ndarray:
 
     return (h / max_val) * peak
 
-
-# Returns the Schroeder's energy curve, useful or reverberation analysis like RT20, RT30, RT60.
-def energy_curve(h: np.ndarray) -> np.ndarray:
-    h = np.asarray(h, dtype=np.float64).squeeze()
-
-    energy = h ** 2 # Energy = impulse squared.
-    edc = np.cumsum(energy[::-1])[::-1] #Cumulative sum from the back. And then reverse it
-    edc /= np.max(edc) + 1e-12
-
-    return edc
-
-##################################################################################
 
 def trim_rir_robust(
         x: np.ndarray,
@@ -38,7 +26,7 @@ def trim_rir_robust(
 
     x = np.asarray(x, dtype=np.float64).squeeze()
 
-    # Estimate noise from the end of the RIR. tail_fraction specifies the fraction of signal for consideration
+    # Estimate noise from the end of the RIR. tail_fraction specifies the fraction of signal for consideration.
     
     tail_fraction = 0.1
     n = len(x)
@@ -49,8 +37,6 @@ def trim_rir_robust(
     noise_db = 20 * np.log10(noise_rms + 1e-12)
 
     threshold_db = noise_db + threshold_over_noise_db
-
-    ##################################################################################
 
     # Hilbert transform + call smoothing
     # smooth_ms = Smoothing window in milliseconds
@@ -63,8 +49,6 @@ def trim_rir_robust(
     envelope_smooth = np.convolve(envelope, kernel, mode="same")
 
     env_db = 20 * np.log10(envelope_smooth + 1e-12)
-
-    ##################################################################################
 
     # Find the peak. Backtrack by 20ms. This is search_start
     # Find where the signal first crosses threshold_db from here. This is onset_idx.
@@ -87,16 +71,11 @@ def trim_rir_robust(
 
         peak_idx = onset_idx + local_peak_idx
 
-    ##################################################################################
-
     # Find the end where the envelope falls back near the noise floor.
 
-    """
-    EDITABLES: min_tail_ms, safety_offset_ms
-    SEARCH AREA: The place from the required rir peak + we add a random 300ms area. peak_idx + min_tail_samples
-    CANDIDATES: Indices in SEARCH AREA where the value falls below noise_db
-    end_idx = Place where we think the noise floor is hit + safety_offset_samples
-    """
+    # SEARCH AREA: The place from the required rir peak + we add a random 300ms area. peak_idx + min_tail_samples
+    # CANDIDATES: Indices in SEARCH AREA where the value falls below noise_db
+    # end_idx = Place where we think the noise floor is hit + safety_offset_samples
 
     # Computing another envelope for tail analysis. This one is much smoother cuz of higher smooth_ms value.
     tail_hilb_sig = hilbert(x)
@@ -120,8 +99,6 @@ def trim_rir_robust(
         safety_offset_samples = int((safety_offset_ms / 1000) * fs)
         end_idx = min(len(x), search_start_idx + end_candidates[0] + safety_offset_samples)
 
-    ##################################################################################
-
     pre_samples = int((pre_ms / 1000) * fs)
     start_idx = max(0, peak_idx - pre_samples)
 
@@ -133,10 +110,3 @@ def trim_rir_robust(
 
     return trimmed, start_idx, end_idx, peak_idx, tail_envelope_smooth
 
-""" 
-We return the tail_envelope for:
-decay analysis
-RT60
-plotting
-noise floor comparison
-"""

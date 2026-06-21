@@ -6,19 +6,16 @@ import numpy as np
 from config import MeasurementConfig
 
 from sweep_gen import (
-    generate_log_sweep, generate_inverse_filter, normalize_peak, pad_signal
+    generate_log_sweep, generate_inverse_filter, normalise_peak, pad_signal
 )
 from audio_io import (
-    load_audio, save_audio, normalize_for_saving, check_clipping
+    load_audio, save_audio, normalise_for_saving, check_clipping
 )
 from alignment import extract_aligned_segment
 from deconvolution import extract_rir
-from rir_processing import energy_curve, normalize_rir, trim_rir_robust
-from visualization import (
+from rir_processing import normalise_rir, trim_rir_robust
+from visualisation import (
     plot_rir, plot_spectrogram, plot_waveform, plot_edc,
-    plot_deconvolution_result,
-    plot_linear_and_nonlinear_ir,
-    plot_linear_and_nonlinear_db,
     compute_fft_rir,
     plot_fft_rir,
     get_rir_at_freq,
@@ -65,8 +62,11 @@ def save_figures(figures, output_dir, point_name, dpi=150):
         save_path = output_dir / name / f"{point_name}_{name}.png"
         save_figure(item, save_path, dpi=dpi, close=True)
 
-def main():
-    cfg = MeasurementConfig()
+def main(cfg=None):
+    # Accept a config from a caller (e.g. the GUI); fall back to defaults when
+    # run from the command line.
+    if cfg is None:
+        cfg = MeasurementConfig()
     cfg.output_dir.mkdir(parents=True, exist_ok=True)
 
     recorded_dir = cfg.recorded_dir
@@ -101,7 +101,7 @@ def main():
             amplitude=cfg.amplitude,
         )
 
-        raw_sweep = normalize_peak(raw_sweep, peak=0.999)
+        raw_sweep = normalise_peak(raw_sweep, peak=0.999)
 
         padded_sweep = pad_signal(
             raw_sweep,
@@ -117,7 +117,7 @@ def main():
             f_end=cfg.f_end,
         )
 
-        inverse_filter = normalize_peak(inverse_filter, peak=0.999)
+        inverse_filter = normalise_peak(inverse_filter, peak=0.999)
 
         save_audio(output_dir / cfg.generated_sweep_name, raw_sweep, cfg.fs)
         save_audio(output_dir / cfg.padded_sweep_name, padded_sweep, cfg.fs)
@@ -234,6 +234,13 @@ def main():
         lundeby_tail_fraction=cfg.lundeby_tail_fraction,
         lundeby_margin_db=cfg.lundeby_margin_db,
         lundeby_max_iter=cfg.lundeby_max_iter,
+        onset_drop_db=cfg.direct_onset_drop_db,
+        inr_min_edt_db=cfg.inr_min_edt_db,
+        inr_min_t20_db=cfg.inr_min_t20_db,
+        inr_min_t30_db=cfg.inr_min_t30_db,
+        rt_min_s=cfg.rt_min_s,
+        rt_max_s=cfg.rt_max_s,
+        rt_min_r2=cfg.rt_min_r2,
 )
 
         freqs, magnitude_db = compute_fft_rir(
@@ -263,7 +270,7 @@ def main():
                 rir_trimmed,
                 cfg.fs,
                 centre,
-                cfg.band_fraction,
+                cfg.rt_band_fraction,
                 order=cfg.band_filter_order,
             )
 
@@ -277,14 +284,26 @@ def main():
                 lundeby_margin_db=cfg.lundeby_margin_db,
                 lundeby_max_iter=cfg.lundeby_max_iter,
                 direct_index=descriptors["direct_index"],
+                onset_drop_db=cfg.direct_onset_drop_db,
+                inr_min_edt_db=cfg.inr_min_edt_db,
+                inr_min_t20_db=cfg.inr_min_t20_db,
+                inr_min_t30_db=cfg.inr_min_t30_db,
+                rt_min_s=cfg.rt_min_s,
+                rt_max_s=cfg.rt_max_s,
+                rt_min_r2=cfg.rt_min_r2,
             )
 
             band_descriptor_values[f"{centre}Hz_edt"] = band_desc["edt"]
             band_descriptor_values[f"{centre}Hz_rt20"] = band_desc["rt20"]
             band_descriptor_values[f"{centre}Hz_rt30"] = band_desc["rt30"]
+            band_descriptor_values[f"{centre}Hz_c50"] = band_desc["c50"]
+            band_descriptor_values[f"{centre}Hz_c80"] = band_desc["c80"]
+            band_descriptor_values[f"{centre}Hz_d50"] = band_desc["d50"]
+            band_descriptor_values[f"{centre}Hz_ts_ms"] = band_desc["ts_ms"]
+            band_descriptor_values[f"{centre}Hz_inr_db"] = band_desc["inr_db"]
         
 
-        rir_trimmed_norm = normalize_rir(rir_trimmed)
+        rir_trimmed_norm = normalise_rir(rir_trimmed)
 
         if point_name in ["C3", "C4"]:
                 freq_1k, magn_1k = get_rir_at_freq(freqs, magnitude_db, 1000)
@@ -294,19 +313,21 @@ def main():
 
         save_audio(
             output_dirs["rir_wav"] / f"{point_name}_rir_raw.wav",
-            normalize_for_saving(rir_raw),
+            normalise_for_saving(rir_raw),
             cfg.fs,
         )
 
         save_audio(
             output_dirs["trimmed_rir_wav"] / f"{point_name}_rir_trimmed.wav",
-            normalize_for_saving(rir_trimmed_norm),
+            normalise_for_saving(rir_trimmed_norm),
             cfg.fs,
         )
 
         # CREATE PLOTS
 
-        edc = energy_curve(rir_trimmed)
+        # Plot the noise-compensated EDC only down to the noise floor; past
+        # that point the compensated curve dives into the floor.
+        edc_db_plot = descriptors["edc_db"][:descriptors["edc_plot_end"]]
 
         figures = {
             "recorded_signal": plot_waveform(
@@ -327,7 +348,7 @@ def main():
             "rir_trimmed": plot_rir(
                 rir_trimmed_norm,
                 cfg.fs,
-                f"Trimmed + Normalized RIR - {point_name}"
+                f"Trimmed + Normalised RIR - {point_name}"
             ),
             "frequency_response": plot_fft_rir(
                 freqs,
@@ -335,9 +356,10 @@ def main():
                 f"Frequency Response from RIR - {point_name} [dB SPL]"
             ),
             "edc": plot_edc(
-                edc,
+                edc_db_plot,
                 cfg.fs,
-                f"Energy Decay Curve - {point_name}"
+                f"Energy Decay Curve (ISO, noise-compensated) - {point_name}",
+                in_db=True,
             ),
         }
 
@@ -375,6 +397,7 @@ def main():
             "direct_index": descriptors["direct_index"],
             "lundeby_knee_s": descriptors["lundeby_knee_s"],
             "noise_db": descriptors["noise_db"],
+            "broadband_inr_db": descriptors["inr_db"],
             **band_response_values,
             **band_descriptor_values,
         })

@@ -49,7 +49,7 @@ def pad_signal(
     return np.concatenate([pre, signal, post])
 
 # To normalize signal amplitude from having too high/low values
-def normalize_peak(
+def normalise_peak(
         signal: np.ndarray, 
         peak: float = 0.999) -> np.ndarray: # We use .999 instead of 1 to give a safe headroom.
     max_val = np.max(np.abs(signal))
