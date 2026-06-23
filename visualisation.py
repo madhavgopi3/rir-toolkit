@@ -162,7 +162,7 @@ def plot_heatmap(values_2d, title, cbar_label, output_path=None, vmin = None, vm
 
     zi_smooth = interpolate_grid(values_2d)
 
-    fig, ax = plt.subplots(figsize=(9, 5))
+    fig, ax = plt.subplots(figsize=(9, 9))
 
     im = ax.imshow(
         zi_smooth,
