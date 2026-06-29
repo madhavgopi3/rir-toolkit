@@ -35,6 +35,24 @@ C4.wav
 E8.wav
 ```
 
+Two sample datasets can be found in the folders "sweep1" and "sweep2". They are two different sweeps captured in a treated recording room across an 8 * 5 grid with the parameters:
+
+# sweep1: Generated sweep by the pipeline
+fs = 48000
+sweep_duration = 10.0
+f_start = 20
+f_end = 20000
+amplitude = 0.8
+
+# sweep2 (External sweep file): 
+fs = 48000
+f_start2 = 50
+f_end2 = 22000
+amplitude = 0.8
+external_sweep_path = "sweep_48000_50_22000.wav"
+
+<img src="images/<img width="2026" height="2761" alt="Room_Drawing" src="https://github.com/user-attachments/assets/2ebbd972-e4b8-49fe-a64f-dca345b4d4ef" />" width="600">
+
 Run the main pipeline:
 
 ```bash
@@ -66,7 +84,7 @@ The program saves results in the `output/` folder, including:
 ```text
 main.py                  Main processing pipeline
 app.py                   Graphical user interface
-config.py                Measurement and analysis global settings
+config.py                Measurement and analysis: global settings
 sweep_gen.py             Sweep and inverse filter generation
 audio_io.py              Audio loading, saving, and resampling
 alignment.py             Sweep alignment
